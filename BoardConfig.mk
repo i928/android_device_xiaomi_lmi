@@ -14,7 +14,6 @@ TARGET_SCREEN_DENSITY := 440
 
 # Init
 TARGET_INIT_VENDOR_LIB := //$(DEVICE_PATH):init_xiaomi_lmi
-TARGET_RECOVERY_DEVICE_MODULES := init_xiaomi_lmi
 
 # Kernel
 TARGET_KERNEL_CONFIG += vendor/xiaomi/lmi.config
