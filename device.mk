@@ -63,3 +63,15 @@ PRODUCT_SOONG_NAMESPACES += \
 
 # Inherit from vendor blobs
 $(call inherit-product, vendor/xiaomi/lmi/lmi-vendor.mk)
+
+# Extra user apps (same generator/layout as crosshatch's prebuilts/extra-apps,
+# just rooted at device/xiaomi/lmi/extra-apps instead of prebuilts/extra-apps)
+USER_APPS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apk)
+PRODUCT_PACKAGES += $(foreach apk,$(USER_APPS_BP),$(basename $(notdir $(apk))))
+# .apks (bundletool APK Set, android_app_set modules) -- split-config apps like Gboard
+USER_APP_SETS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apks)
+PRODUCT_PACKAGES += $(foreach apkset,$(USER_APP_SETS_BP),$(basename $(notdir $(apkset))))
+# privapp-permissions-*.xml (prebuilt_etc modules) -- module name is the full
+# filename including extension, unlike the .apk/.apks rules above.
+USER_APP_PERMS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/privapp-permissions-*.xml)
+PRODUCT_PACKAGES += $(foreach xml,$(USER_APP_PERMS_BP),$(notdir $(xml)))

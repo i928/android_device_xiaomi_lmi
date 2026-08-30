@@ -23,3 +23,6 @@ TARGET_VENDOR_PROP += $(DEVICE_PATH)/vendor.prop
 
 # Inherit from the proprietary version
 include vendor/xiaomi/lmi/BoardConfigVendor.mk
+
+# Extra user apps sepolicy (see device.mk for the PRODUCT_PACKAGES wiring)
+include device/xiaomi/lmi/extra-apps/sepolicy/Android.mk
