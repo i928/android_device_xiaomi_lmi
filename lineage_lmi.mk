@@ -25,3 +25,7 @@ PRODUCT_GMS_CLIENTID_BASE := android-xiaomi
 PRODUCT_BUILD_PROP_OVERRIDES += \
     BuildDesc="lmi-user 12 RKQ1.211001.001 V14.0.1.0.SJKMIXM release-keys" \
     BuildFingerprint=Redmi/lmi/lmi:12/RKQ1.211001.001/V14.0.1.0.SJKMIXM:user/release-keys
+
+# MindTheGapps (Android 16 / baklava) — baked in so all-EROFS is safe:
+# nothing is flashed into system/product post-install.
+$(call inherit-product, vendor/gapps/arm64/arm64-vendor.mk)
