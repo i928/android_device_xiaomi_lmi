@@ -59,7 +59,21 @@ PRODUCT_SHIPPING_API_LEVEL := 29
 
 # Soong namespaces
 PRODUCT_SOONG_NAMESPACES += \
-    $(LOCAL_PATH)
+    $(LOCAL_PATH) \
+    hardware/qcom-caf/wlan \
+    hardware/qcom-caf/wlan/qcwcn \
+    hardware/qcom-caf/sm8250 \
+    hardware/qcom-caf/thermal \
+    vendor/qcom/opensource/data-ipa-cfg-mgr-legacy-um
+
+# sm8250-common/kona.mk (inherited above) assumes SoC-generic "kona"-suffixed
+# vendor blob names, but lmi's own proprietary-files.txt dump uses
+# device-specific "lmi"-suffixed names instead (audio.primary.lmi,
+# liba2dpoffload_lmi - see vendor/xiaomi/lmi/Android.bp). Swap them.
+PRODUCT_PACKAGES := $(filter-out audio.primary.kona liba2dpoffload,$(PRODUCT_PACKAGES))
+PRODUCT_PACKAGES += \
+    audio.primary.lmi \
+    liba2dpoffload_lmi
 
 # Inherit from vendor blobs
 $(call inherit-product, vendor/xiaomi/lmi/lmi-vendor.mk)
