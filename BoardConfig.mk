@@ -58,4 +58,12 @@ droidcore: $(libksud_chmod_stamp)
 
 # fs_config overrides -- this is the only layer whose permissions survive into
 # the packaged image.
-TARGET_FS_CONFIG_GEN := device/xiaomi/lmi/config.fs
+#
+# MUST be += , not := . BoardConfigCommon.mk (included at the top of this file)
+# already sets TARGET_FS_CONFIG_GEN to sm8250-common/config.fs, which defines 42
+# sections including [AID_VENDOR_QTI_DIAG] and seven other AID_VENDOR_* ids that
+# the QTI vendor blobs reference. Assigning with := discarded all of them and the
+# build failed with:
+#     host_init_verifier: .../imsdatadaemon.rc: 11: Unable to decode GID for
+#     "vendor_qti_diag": getpwnam failed: No such file or directory
+TARGET_FS_CONFIG_GEN += device/xiaomi/lmi/config.fs
