@@ -27,10 +27,14 @@ include vendor/xiaomi/lmi/BoardConfigVendor.mk
 # Extra user apps sepolicy (see device.mk for the PRODUCT_PACKAGES wiring)
 include device/xiaomi/lmi/extra-apps/sepolicy/Android.mk
 
-# Export TARGET_KERNEL_SOURCE/KERNEL_ARCH/etc to Soong's lineageVarsPlugin
-# namespace -- without this, vendor/lineage/build/soong/Android.bp's
-# generated_kernel_includes/prebuilt_kernel_includes genrules fail Soong
-# analysis entirely with "unknown variable" for every $(KERNEL_*)/
-# $(TARGET_KERNEL_*) reference, even though nothing in this device's own
-# build graph currently depends on those genrules.
--include vendor/lineage/config/BoardConfigSoong.mk
+# This device tree never included the canonical vendor/lineage BoardConfig
+# fragment that almost every other LineageOS device gets automatically -
+# it's what sets TARGET_KERNEL_VERSION (BoardConfigKernel.mk, needed by
+# vendor/lineage/build/tasks/kernel.mk's GKI_SUFFIX logic - its absence was
+# a hard "Argument missing" kati error), exports KERNEL_*/TARGET_KERNEL_*
+# to Soong's lineageVarsPlugin namespace (BoardConfigSoong.mk), and
+# auto-adds hardware/qcom-caf/$(QCOM_HARDWARE_VARIANT)+bootctrl to
+# PRODUCT_SOONG_NAMESPACES (BoardConfigQcom.mk, gated on
+# BOARD_USES_QCOM_HARDWARE which sm8250-common already sets true). See
+# lin23-lmi-lineage23-build-blockers memory for the full diagnosis.
+include vendor/lineage/config/BoardConfigLineage.mk

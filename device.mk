@@ -58,13 +58,13 @@ PRODUCT_COPY_FILES += \
 PRODUCT_SHIPPING_API_LEVEL := 29
 
 # Soong namespaces
+# (wlan, wlan/qcwcn, sm8250, thermal-legacy-um, data-ipa-cfg-mgr-legacy-um
+# are all added automatically by hardware/qcom-caf/common/BoardConfigQcom.mk
+# now that vendor/lineage/config/BoardConfigLineage.mk is properly included
+# - see BoardConfig.mk. Adding them here too caused a hard Soong conflict:
+# "found in multiple namespaces" for thermal-service.qti.)
 PRODUCT_SOONG_NAMESPACES += \
-    $(LOCAL_PATH) \
-    hardware/qcom-caf/wlan \
-    hardware/qcom-caf/wlan/qcwcn \
-    hardware/qcom-caf/sm8250 \
-    hardware/qcom-caf/thermal \
-    vendor/qcom/opensource/data-ipa-cfg-mgr-legacy-um
+    $(LOCAL_PATH)
 
 # sm8250-common/kona.mk (inherited above) assumes SoC-generic "kona"-suffixed
 # vendor blob names, but lmi's own proprietary-files.txt dump uses
@@ -84,6 +84,7 @@ USER_APPS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apk)
 PRODUCT_PACKAGES += $(foreach apk,$(USER_APPS_BP),$(basename $(notdir $(apk))))
 # .apks (bundletool APK Set, android_app_set modules) -- split-config apps like Gboard
 USER_APP_SETS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apks)
+
 PRODUCT_PACKAGES += $(foreach apkset,$(USER_APP_SETS_BP),$(basename $(notdir $(apkset))))
 # privapp-permissions-*.xml (prebuilt_etc modules) -- module name is the full
 # filename including extension, unlike the .apk/.apks rules above.
