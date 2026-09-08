@@ -85,6 +85,20 @@ PRODUCT_PACKAGES += $(foreach apk,$(USER_APPS_BP),$(basename $(notdir $(apk))))
 # .apks (bundletool APK Set, android_app_set modules) -- split-config apps like Gboard
 USER_APP_SETS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apks)
 
+# KernelSUNext's bundled libksud.so never gets extracted for a pre-baked
+# /product/app install -- PackageManager only extracts lib/<abi>/*.so on a
+# normal /data/app install. The app execs a hardcoded path expecting that
+# extraction to have happened, so ship the binary as its own copied file at
+# exactly that path. Soong prebuilt module types cannot express escaping to an
+# arbitrary nested product path, hence plain PRODUCT_COPY_FILES -- which needs
+# BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true, set in BoardConfig.mk
+# (that flag is board-scoped and is silently ignored if set from here).
+# It also needs the config.fs entry to force the +x bit: PRODUCT_COPY_FILES
+# copies with a plain non-preserving `cp`, and image packaging does not mirror
+# the staging dir's host permissions either.
+PRODUCT_COPY_FILES += \
+    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so
+
 PRODUCT_PACKAGES += $(foreach apkset,$(USER_APP_SETS_BP),$(basename $(notdir $(apkset))))
 # privapp-permissions-*.xml (prebuilt_etc modules) -- module name is the full
 # filename including extension, unlike the .apk/.apks rules above.

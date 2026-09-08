@@ -38,3 +38,24 @@ include device/xiaomi/lmi/extra-apps/sepolicy/Android.mk
 # BOARD_USES_QCOM_HARDWARE which sm8250-common already sets true). See
 # lin23-lmi-lineage23-build-blockers memory for the full diagnosis.
 include vendor/lineage/config/BoardConfigLineage.mk
+
+# libksud.so is shipped via PRODUCT_COPY_FILES in device.mk (see the comment
+# there). This flag is what actually permits an ELF binary through that
+# mechanism; it is board-scoped and silently ignored if set from a product .mk.
+BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES := true
+
+# Force the executable bit. PRODUCT_COPY_FILES' copy rule uses plain `cp`
+# (no -p), which drops the source's +x regardless, and the app execs this file
+# directly. Done via a stamp file because referencing $(PRODUCT_OUT) as a rule
+# prerequisite from device.mk hits a "||PRODUCT-PATH-PH||" placeholder bug --
+# PRODUCT_OUT is not fully resolved at product-config-parse time, whereas
+# BoardConfig.mk runs later.
+libksud_chmod_stamp := $(OUT_DIR)/libksud_chmod.stamp
+$(libksud_chmod_stamp): $(PRODUCT_OUT)/$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so
+	chmod 755 $<
+	touch $@
+droidcore: $(libksud_chmod_stamp)
+
+# fs_config overrides -- this is the only layer whose permissions survive into
+# the packaged image.
+TARGET_FS_CONFIG_GEN := device/xiaomi/lmi/config.fs
