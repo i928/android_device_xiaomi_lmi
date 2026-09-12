@@ -24,8 +24,11 @@ TARGET_VENDOR_PROP += $(DEVICE_PATH)/vendor.prop
 # Inherit from the proprietary version
 include vendor/xiaomi/lmi/BoardConfigVendor.mk
 
-# Extra user apps sepolicy (see device.mk for the PRODUCT_PACKAGES wiring)
-include device/xiaomi/lmi/extra-apps/sepolicy/Android.mk
+# Extra user apps sepolicy (see device.mk for the PRODUCT_PACKAGES wiring).
+# extra-apps is untracked local content, so a fresh checkout of this branch does
+# not have it and a hard include kills board_config.mk before lunch even runs.
+# device.mk already wildcards the prebuilts themselves; guard this the same way.
+include $(wildcard device/xiaomi/lmi/extra-apps/sepolicy/Android.mk)
 
 # This device tree never included the canonical vendor/lineage BoardConfig
 # fragment that almost every other LineageOS device gets automatically -
