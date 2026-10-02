@@ -1,0 +1,3 @@
+# Private key of ksu_manager_cert: local only, never pushed (the old one
+# leaked through this repo and was rotated 2026-10-02).
+security/ksu_manager/*.pk8
