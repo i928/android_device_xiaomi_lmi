@@ -1,0 +1,50 @@
+# Seed ksud, and run the KSU autoinstall script once boot completes.
+# Ported from device/google/sunfish (see its KSU.md for module setup).
+#
+# Seeding ksud: on a wiped device /data/adb/ksud does not exist until the
+# manager app is opened, and without it KernelSU is completely inert:
+#   init: Command 'exec u:r:ksu:s0 root -- /data/adb/ksud post-fs-data'
+#         failed: Cannot find '/data/adb/ksud'
+# ...and the same for `services` and `boot-completed`. `copy` is a built-in init
+# command, so this needs no exec and no new sepolicy. It is the same binary the
+# manager would copy, shipped in this ROM, so it matches this kernel. Rewritten
+# every boot, which also repairs a deleted or truncated ksud.
+#
+# KSU's own post-fs-data exec (init.rc) runs before this action, so on the very
+# first boot after a wipe that stage is still skipped -- harmless, as there are
+# no modules to mount yet. `services` and `boot-completed` come later and do
+# find it.
+on post-fs-data
+    mkdir /data/adb 0700 root root
+    copy /product/app/KernelSUNext/lib/arm64/libksud.so /data/adb/ksud
+    chmod 0755 /data/adb/ksud
+    chown root root /data/adb/ksud
+    # `ksud install` is what the manager runs on first launch: it unpacks
+    # busybox into /data/adb/ksu/bin. ksud runs every service.d script as
+    # `/data/adb/ksu/bin/busybox sh <script>`, so on a wiped device -- until
+    # the manager is opened -- no script runs at all. Run from the ROM copy,
+    # not /data/adb/ksud: install deletes /data/adb/ksud and copies its own
+    # executable back over it, which fails when that is the file it runs from.
+    # this kernel (lmi-ksu) is KSU UAPI 2, so its ksud is 3.3 (ksud_prebuilt/),
+    # which takes no --libadbroot.
+    exec u:r:ksu:s0 root -- /product/app/KernelSUNext/lib/arm64/libksud.so install
+    # First boot after a wipe: stage the module snapshot (in place of zip
+    # installs); ksu-autoinstall.sh then does the one activation reboot.
+    exec u:r:ksu:s0 root -- /system/bin/sh /system_ext/bin/ksu-snapshot.sh
+    mkdir /data/adb/service.d 0755 root root
+    exec u:r:ksu:s0 root root -- /system/bin/sh -c "[ -f /data/adb/service.d/ksu-autoinstall.sh ] || cp /system_ext/bin/ksu-autoinstall.sh /data/adb/service.d/ksu-autoinstall.sh && chmod 0755 /data/adb/service.d/ksu-autoinstall.sh"
+
+# The autoinstall script is installed into /data/adb/service.d above and run by
+# ksud's own `services` stage, which (in ksud 3.3.0) starts service.d scripts
+# without waiting, in their own process group and moved out of init's cgroup,
+# so they are neither killed nor holding up boot. service.d rather than
+# post-fs-data.d: ksud's post-fs-data exec runs before this action, so on the
+# first boot after a wipe -- the boot this exists for -- /data/adb/ksud does not
+# exist yet and that stage is skipped; `services` comes later and finds both.
+# Copied only when missing, so it can be edited on the device for testing and
+# the edit survives reboots -- but that also means a newer ROM version never
+# replaces it: delete /data/adb/service.d/ksu-autoinstall.sh after an update to
+# pick up the ROM's copy. `copy` always overwrites, hence `exec sh -c`, in the
+# u:r:ksu:s0 context KernelSU's own init.rc exec uses (init cannot exec a shell in
+# its own domain). The copy in post-fs-data.d from earlier builds is removed so
+# the script does not run twice.

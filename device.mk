@@ -92,3 +92,36 @@ PRODUCT_PACKAGES += $(foreach xml,$(USER_APP_PERMS_BP),$(notdir $(xml)))
 # config.fs entry for +x.
 PRODUCT_COPY_FILES += \
     device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so
+
+# KernelSU module autoinstall, as on sunfish/crosshatch (sunfish's KSU.md has
+# the full setup). After a wipe /data/adb is empty; /product survives, so the
+# ROM carries the module zips and installs them on first boot, then reboots
+# once (persist.ksu_ai_reboot=1). ksu-autoinstall/ is local content:
+#   NN-<name>.zip  installed once each, in filename order (no susfs module:
+#                  this kernel has no susfs)
+#   scripts/*.sh   boot scripts placed by ~/extraAPKs/publish.sh, run every boot
+#   *.allowlist    optional: apps granted root on a wipe
+#   snapshot/ksu-snapshot.tar.gz  optional finished install (make-snapshot.sh)
+# init.ksu-autoinstall.rc also seeds /data/adb/ksud and runs `ksud install`, so
+# KernelSU works before the manager is ever opened. Log: /data/adb/ksu-autoinstall.log
+KSU_AUTOINSTALL_DIR := device/xiaomi/lmi/ksu-autoinstall
+PRODUCT_COPY_FILES += \
+    $(foreach z,$(wildcard $(KSU_AUTOINSTALL_DIR)/*.zip),\
+        $(z):$(TARGET_COPY_OUT_PRODUCT)/etc/ksu-autoinstall/$(notdir $(z))) \
+    $(foreach a,$(wildcard $(KSU_AUTOINSTALL_DIR)/*.allowlist),\
+        $(a):$(TARGET_COPY_OUT_PRODUCT)/etc/ksu-autoinstall/$(notdir $(a))) \
+    $(foreach s,$(wildcard $(KSU_AUTOINSTALL_DIR)/scripts/*.sh),\
+        $(s):$(TARGET_COPY_OUT_PRODUCT)/etc/ksu-autoinstall/scripts/$(notdir $(s))) \
+    $(foreach t,$(wildcard $(KSU_AUTOINSTALL_DIR)/snapshot/ksu-snapshot.tar.gz),\
+        $(t):$(TARGET_COPY_OUT_PRODUCT)/etc/ksu-autoinstall/$(notdir $(t))) \
+    device/xiaomi/lmi/ksu-snapshot.sh:$(TARGET_COPY_OUT_SYSTEM_EXT)/bin/ksu-snapshot.sh \
+    device/xiaomi/lmi/ksu-autoinstall.sh:$(TARGET_COPY_OUT_SYSTEM_EXT)/bin/ksu-autoinstall.sh \
+    device/xiaomi/lmi/init.ksu-autoinstall.rc:$(TARGET_COPY_OUT_SYSTEM_EXT)/etc/init/init.ksu-autoinstall.rc
+PRODUCT_PRODUCT_PROPERTIES += \
+    persist.ksu_ai_reboot=1
+
+# Apps installed as normal user apps once setup wizard is done, by
+# install-apps.sh (in ksu-autoinstall/scripts/). They keep their own
+# signature, so they update normally (File Manager+ ships this way).
+USER_INSTALL_APKS := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/install-apps/*.apk)
+PRODUCT_PACKAGES += $(foreach apk,$(USER_INSTALL_APKS),userapp_$(basename $(notdir $(apk))))
