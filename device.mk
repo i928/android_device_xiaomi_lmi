@@ -83,3 +83,12 @@ PRODUCT_PACKAGES += $(foreach apkset,$(USER_APP_SETS_BP),$(basename $(notdir $(a
 # filename including extension, unlike the .apk/.apks rules above.
 USER_APP_PERMS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/privapp-permissions-*.xml)
 PRODUCT_PACKAGES += $(foreach xml,$(USER_APP_PERMS_BP),$(notdir $(xml)))
+
+# KernelSUNext's bundled libksud.so is never extracted for a pre-baked
+# /product/app install, and the manager execs it from its native lib dir, so
+# ship the binary at exactly that path (3.3: this kernel is KSU UAPI 2;
+# publish.sh gives this tree the 3.3 manager to match). Needs
+# BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES (BoardConfig.mk) and the
+# config.fs entry for +x.
+PRODUCT_COPY_FILES += \
+    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so

@@ -1,0 +1,10 @@
+// Dedicated cert for the baked-in KernelSU-Next manager app, so its signature
+// doesn't collide with every other app resigned via default_dev_cert (that
+// collision let the kernel's manager-detection scan crown a random other
+// /product/app app instead - CONFIRMED 2026-08-30 on crosshatch). Same
+// keystore identity as the other devices (~/ksu-manager-build/keystore) -
+// see its README for how these files were generated.
+android_app_certificate {
+    name: "ksu_manager_cert",
+    certificate: "ksu_manager",
+}
