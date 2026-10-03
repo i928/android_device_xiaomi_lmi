@@ -25,9 +25,8 @@ on post-fs-data
     # the manager is opened -- no script runs at all. Run from the ROM copy,
     # not /data/adb/ksud: install deletes /data/adb/ksud and copies its own
     # executable back over it, which fails when that is the file it runs from.
-    # this kernel (lmi-ksu) is KSU UAPI 2, so its ksud is 3.3 (ksud_prebuilt/),
-    # which takes no --libadbroot.
-    exec u:r:ksu:s0 root -- /product/app/KernelSUNext/lib/arm64/libksud.so install
+    # KernelSU-Next 3.4 (UAPI 4): --libadbroot matches what the 3.4 manager passes.
+    exec u:r:ksu:s0 root -- /product/app/KernelSUNext/lib/arm64/libksud.so install --libadbroot /product/app/KernelSUNext/lib/arm64/libadbroot.so
     # First boot after a wipe: stage the module snapshot (in place of zip
     # installs); ksu-autoinstall.sh then does the one activation reboot.
     exec u:r:ksu:s0 root -- /system/bin/sh /system_ext/bin/ksu-snapshot.sh
