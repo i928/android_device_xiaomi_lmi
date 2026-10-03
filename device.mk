@@ -97,7 +97,12 @@ USER_APP_SETS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apks)
 # copies with a plain non-preserving `cp`, and image packaging does not mirror
 # the staging dir's host permissions either.
 PRODUCT_COPY_FILES += \
-    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so
+    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so \
+    device/xiaomi/lmi/ksud_prebuilt/libadbroot.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libadbroot.so
+# KernelSU-Next 3.4 (kernel erofs-missing-includes, driver legacy-susfs-v2-3.4,
+# UAPI 4): ksud and libadbroot.so from the 3.4.0 manager (33296). The manager
+# runs `ksud install --libadbroot <nativeLibraryDir>/libadbroot.so`;
+# libadbroot.so is a shared library, not exec'd, so it needs no +x.
 
 PRODUCT_PACKAGES += $(foreach apkset,$(USER_APP_SETS_BP),$(basename $(notdir $(apkset))))
 # Native libs of preinstalled apps that ship them compressed, unpacked beside
