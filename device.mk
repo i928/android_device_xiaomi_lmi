@@ -86,12 +86,15 @@ PRODUCT_PACKAGES += $(foreach xml,$(USER_APP_PERMS_BP),$(notdir $(xml)))
 
 # KernelSUNext's bundled libksud.so is never extracted for a pre-baked
 # /product/app install, and the manager execs it from its native lib dir, so
-# ship the binary at exactly that path (3.3: this kernel is KSU UAPI 2;
-# publish.sh gives this tree the 3.3 manager to match). Needs
+# ship the binary at exactly that path. KernelSU-Next 3.4 (kernel lmi-ksu,
+# UAPI 4): ksud and libadbroot.so from the 3.4.0 manager (33296); the manager
+# runs `ksud install --libadbroot <nativeLibraryDir>/libadbroot.so`
+# (libadbroot.so is a shared library, no +x). Needs
 # BUILD_BROKEN_ELF_PREBUILT_PRODUCT_COPY_FILES (BoardConfig.mk) and the
 # config.fs entry for +x.
 PRODUCT_COPY_FILES += \
-    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so
+    device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so \
+    device/xiaomi/lmi/ksud_prebuilt/libadbroot.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libadbroot.so
 
 # KernelSU module autoinstall, as on sunfish/crosshatch (sunfish's KSU.md has
 # the full setup). After a wipe /data/adb is empty; /product survives, so the
