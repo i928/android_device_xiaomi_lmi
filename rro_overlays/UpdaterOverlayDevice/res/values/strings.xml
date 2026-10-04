@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     The Updater's "Changelog" menu: our feed repo github.com/i928/OTA, branch
+     lineage-23.2, changelogs/<device>.txt (written and pushed with each release
+     by ~/bin/deploy_ota.sh). The feed itself is lineage.updater.uri (device.mk).
+-->
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/i928/OTA/lineage-23.2/changelogs/<xliff:g id="device_name">%1$s</xliff:g>.txt</string>
+</resources>

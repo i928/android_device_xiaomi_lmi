@@ -44,7 +44,13 @@ PRODUCT_PACKAGES += \
     FrameworkResOverlayDevice \
     LineageSDKOverlayDevice \
     LineageSystemUIOverlayDevice \
-    SystemUIOverlayDevice
+    SystemUIOverlayDevice \
+    UpdaterOverlayDevice
+
+# Updater: OTA feed in github.com/i928/OTA (branch lineage-23.2), zips on
+# SourceForge (androidos/lmi/android16); written and pushed by ~/bin/deploy_ota.sh.
+PRODUCT_PRODUCT_PROPERTIES += \
+    lineage.updater.uri=https://raw.githubusercontent.com/i928/OTA/lineage-23.2/builds/{device}.json
 
 # Permissions
 PRODUCT_COPY_FILES += \
