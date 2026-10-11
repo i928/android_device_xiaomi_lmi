@@ -105,8 +105,8 @@ USER_APP_SETS_BP := $(wildcard device/xiaomi/lmi/extra-apps/prebuilt/*.apks)
 PRODUCT_COPY_FILES += \
     device/xiaomi/lmi/ksud_prebuilt/libksud.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libksud.so \
     device/xiaomi/lmi/ksud_prebuilt/libadbroot.so:$(TARGET_COPY_OUT_PRODUCT)/app/KernelSUNext/lib/arm64/libadbroot.so
-# KernelSU-Next 3.4 (kernel branch ksu34, driver legacy-susfs-v2-3.4, UAPI 4):
-# ksud and libadbroot.so from the 3.4.0 manager (33296). The manager runs
+# KernelSU-Next 3.4.1 (kernel branch ksu-3.4.1, driver 5a21ddac, UAPI 5):
+# ksud and libadbroot.so from the 3.4.1 manager. The manager runs
 # `ksud install --libadbroot <nativeLibraryDir>/libadbroot.so`; libadbroot.so
 # is a shared library, not exec'd, so it needs no +x.
 
