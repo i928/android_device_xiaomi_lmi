@@ -7,14 +7,20 @@
 # they are part of the image, so a freshly wiped phone can set itself back up with
 # no transfers at all.
 #
-# Each zip is installed at most once; the marker files live in /data/adb, so a
-# later wipe deliberately makes them install again. Adding a new zip to the ROM
-# installs only that one, since markers are per-file.
+# Version check: each zip's module.prop (id, versionCode) is compared with the
+# installed module, so a ROM update that ships a newer module upgrades phones
+# that already have it, and never downgrades one the user updated past the ROM:
+#   not installed, never installed by us  -> install
+#   not installed, installed by us before -> skip (the user removed it)
+#   installed versionCode < zip's         -> install the upgrade
+#   installed versionCode >= zip's        -> skip
+# The markers live in /data/adb, so a wipe deliberately makes them install
+# again. A zip without a readable id/versionCode falls back to once per
+# filename.
 #
 # Install order is filename order, which is why the zips carry numeric prefixes:
 # the Zygisk implementation (10-ReZygisk) has to be installed before the Zygisk
-# modules that load through it (20-*). Renaming a zip makes it install again,
-# since the marker is keyed on the filename.
+# modules that load through it (20-*).
 #
 # Expected log on a wiped device (/data/adb/ksu-autoinstall.log):
 #   boot 1: [SCRIPT TRIGGERED] -> [INSTALLED] x8 -> [WAITING] setup wizard ->
@@ -131,10 +137,38 @@ if [ -f "$SEED_ALLOWLIST" ] && [ ! -f "$STATE/allowlist.done" ]; then
 	fi
 fi
 
+# prop FILE KEY: a module.prop value. zprop ZIP KEY: the same from inside a zip.
+prop() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1 | tr -d '\r'; }
+zprop() { unzip -p "$1" module.prop 2>/dev/null | sed -n "s/^$2=//p" | head -n 1 | tr -d '\r'; }
+isnum() { case "$1" in ''|*[!0-9]*) return 1;; esac; }
+# Installed versionCode of a module id: a staged update counts over the live one.
+instvc() {
+	if [ -f "/data/adb/modules_update/$1/module.prop" ]; then
+		prop "/data/adb/modules_update/$1/module.prop" versionCode
+	elif [ -f "/data/adb/modules/$1/module.prop" ]; then
+		prop "/data/adb/modules/$1/module.prop" versionCode
+	fi
+}
+
+# Action markers from the script before the version check are empty: they
+# count as done for the version live now, before any upgrade below is staged.
+for id in tricky_store bindhosts; do
+	m="$STATE/action-$id.done"
+	[ -f "$m" ] && [ ! -s "$m" ] &&
+		prop "/data/adb/modules/$id/module.prop" versionCode > "$m"
+done
+
 installed=0
+upgraded=0
 total=0
 for zip in "$SRC"/*.zip; do
-	[ -f "$zip" ] && total=$((total + 1))
+	[ -f "$zip" ] || continue
+	total=$((total + 1))
+	# Phones set up by the filename-only script have <name>.done but no id
+	# marker yet: adopt it, so a module the user removed stays removed.
+	zid=$(zprop "$zip" id)
+	[ -n "$zid" ] && [ -f "$STATE/${zip##*/}.done" ] && [ ! -f "$STATE/id-$zid.done" ] &&
+		: > "$STATE/id-$zid.done"
 done
 # Several passes: installing a metamodule (Hybrid-Mount) resets sys.boot_completed
 # to 0, so every install queued behind it fails with "Android is Booting!" until
@@ -146,7 +180,27 @@ while [ "$pass_no" -le 3 ]; do
 	for zip in "$SRC"/*.zip; do
 		[ -f "$zip" ] || continue
 		name=${zip##*/}
-		[ -f "$STATE/$name.done" ] && continue
+		zid=$(zprop "$zip" id)
+		zvc=$(zprop "$zip" versionCode)
+		if [ -n "$zid" ] && isnum "$zvc"; then
+			ivc=$(instvc "$zid")
+			if [ -z "$ivc" ]; then
+				# Not installed: first time, or removed by the user.
+				[ -f "$STATE/id-$zid.done" ] && continue
+				what=INSTALLING
+			elif isnum "$ivc" && [ "$ivc" -lt "$zvc" ]; then
+				[ -f "/data/adb/modules/$zid/remove" ] && continue
+				what=UPGRADING
+			else
+				# Same or newer already installed (the user may have updated it).
+				: > "$STATE/$name.done"
+				: > "$STATE/id-$zid.done"
+				continue
+			fi
+		else
+			[ -f "$STATE/$name.done" ] && continue
+			what=INSTALLING
+		fi
 
 		# The prop may have been reset by a metamodule install in this pass.
 		i=0
@@ -155,7 +209,11 @@ while [ "$pass_no" -le 3 ]; do
 			i=$((i + 1))
 		done
 
-		log "[INSTALLING] $name (pass $pass_no)..."
+		if [ "$what" = UPGRADING ]; then
+			log "[UPGRADING] $name ($zid versionCode $ivc -> $zvc, pass $pass_no)..."
+		else
+			log "[INSTALLING] $name (pass $pass_no)..."
+		fi
 		# ksud's own output goes to the log indented, so the tagged lines
 		# stay easy to scan.
 		"$KSUD" module install "$zip" > "$OUT" 2>&1
@@ -163,7 +221,12 @@ while [ "$pass_no" -le 3 ]; do
 		sed 's/^/        | /' "$OUT" >> "$LOG"
 		if [ "$rc" -eq 0 ]; then
 			: > "$STATE/$name.done"
-			installed=$((installed + 1))
+			[ -n "$zid" ] && : > "$STATE/id-$zid.done"
+			if [ "$what" = INSTALLING ]; then
+				installed=$((installed + 1))
+			else
+				upgraded=$((upgraded + 1))
+			fi
 			log "[INSTALLED] $name"
 		else
 			# No marker: retried in the next pass, then on the next boot.
@@ -245,7 +308,14 @@ run_actions() {
 		[ -f "$moddir/action.sh" ] || continue
 		[ -f "$moddir/disable" ] && continue
 		[ -f "$moddir/remove" ] && continue
-		[ -f "$STATE/action-$id.done" ] && continue
+		# The marker holds the versionCode the action last ran for, so a
+		# module upgrade runs it once more.
+		vc=$(prop "$moddir/module.prop" versionCode)
+		if [ -f "$STATE/action-$id.done" ]; then
+			[ "$(cat "$STATE/action-$id.done")" = "$vc" ] && continue
+			done_vc=$(cat "$STATE/action-$id.done")
+			log "[ACTION] $id changed from versionCode $done_vc to $vc."
+		fi
 
 		log "[ACTION] Running action for $id..."
 		"$KSUD" module action "$id" > "$OUT" 2>&1
@@ -254,7 +324,7 @@ run_actions() {
 		grep -q "all downloads failed" "$OUT" && rc=1
 		sed 's/^/        | /' "$OUT" >> "$LOG"
 		if [ "$rc" -eq 0 ]; then
-			: > "$STATE/action-$id.done"
+			echo "$vc" > "$STATE/action-$id.done"
 			log "[ACTION DONE] $id"
 		else
 			# No marker: AlwaysStrong's action needs network, so let it retry.
@@ -290,9 +360,16 @@ if [ "$installed" -eq 0 ] && [ -f "$STATE/.rebooted" ] && [ ! -f "$STATE/.zygote
 fi
 
 if [ "$installed" -eq 0 ]; then
-	# Retry any action that failed on an earlier boot (e.g. no network yet).
+	# Retry any action that failed on an earlier boot (e.g. no network yet),
+	# and run the action of a module that was upgraded since.
 	[ -f "$STATE/.zygote_restarted" ] && run_actions
-	log "[NOTHING TO DO] All $total module zips already installed."
+	if [ "$upgraded" -gt 0 ]; then
+		# No automatic reboot for an upgrade on a set-up phone: it already
+		# had its one, and the user may be using it.
+		log "[UPGRADES STAGED] $upgraded module upgrade(s); they activate on the next reboot."
+	else
+		log "[NOTHING TO DO] All $total module zips installed and up to date."
+	fi
 	exit 0
 fi
 log "[MODULES STAGED] $installed of $total installed this boot; they activate on the next full boot."
