@@ -233,6 +233,7 @@ while [ "$pass_no" -le 3 ]; do
 				installed=$((installed + 1))
 			else
 				upgraded=$((upgraded + 1))
+				upgraded_names="${upgraded_names:+$upgraded_names, }$(zprop "$zip" name) $(zprop "$zip" version)"
 			fi
 			log "[INSTALLED] $name"
 		else
@@ -380,6 +381,12 @@ if [ "$installed" -eq 0 ]; then
 		# No automatic reboot for an upgrade on a set-up phone: it already
 		# had its one, and the user may be using it.
 		log "[UPGRADES STAGED] $upgraded module upgrade(s); they activate on the next reboot."
+		# Tell the user, who otherwise has no way to know a reboot is needed.
+		# Posted under the shell's notification channel; swiped away like any
+		# other, and gone after the reboot.
+		cmd notification post -S bigtext -t "Reboot to finish module update" \
+			ksu-autoinstall "$upgraded_names updated. Reboot to activate." \
+			> /dev/null 2>&1 && log "[NOTIFIED] Reboot needed for: $upgraded_names"
 	else
 		log "[NOTHING TO DO] All $total module zips installed and up to date."
 	fi
