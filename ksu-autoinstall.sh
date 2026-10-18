@@ -170,6 +170,13 @@ for zip in "$SRC"/*.zip; do
 	[ -n "$zid" ] && [ -f "$STATE/${zip##*/}.done" ] && [ ! -f "$STATE/id-$zid.done" ] &&
 		: > "$STATE/id-$zid.done"
 done
+# KSU-Next 3.4 ksud scans each zip against a downloaded risk catalog and, on
+# a Low/Medium hit, waits 5 s for a volume-down press, else aborts the install
+# (AlwaysStrong is flagged Medium). Nobody is there to press it, so pause the
+# check for these installs and put it back afterwards. Older ksud has no
+# `module risk`: status prints nothing and the check is left alone.
+risk_was=$("$KSUD" module risk status 2>/dev/null)
+[ "$risk_was" = Enabled ] && "$KSUD" module risk disable > /dev/null 2>&1
 # Several passes: installing a metamodule (Hybrid-Mount) resets sys.boot_completed
 # to 0, so every install queued behind it fails with "Android is Booting!" until
 # the prop comes back. Filename order puts the metamodule last (30-), and these
@@ -238,6 +245,7 @@ while [ "$pass_no" -le 3 ]; do
 	pass_no=$((pass_no + 1))
 done
 rm -f "$OUT"
+[ "$risk_was" = Enabled ] && "$KSUD" module risk enable > /dev/null 2>&1
 
 # ksu-snapshot.sh staged the ROM's module snapshot at post-fs-data this boot,
 # the same state zip installs leave: they go live on the next boot, so count
@@ -308,6 +316,11 @@ run_actions() {
 		[ -f "$moddir/action.sh" ] || continue
 		[ -f "$moddir/disable" ] && continue
 		[ -f "$moddir/remove" ] && continue
+		# An upgrade staged this boot is not live yet, but ksud already copied
+		# its module.prop over the live one and flagged it "update": wait for
+		# the reboot, or the old action runs and the new version is marked done.
+		[ -f "$moddir/update" ] && continue
+		[ -d "/data/adb/modules_update/$id" ] && continue
 		# The marker holds the versionCode the action last ran for, so a
 		# module upgrade runs it once more.
 		vc=$(prop "$moddir/module.prop" versionCode)
